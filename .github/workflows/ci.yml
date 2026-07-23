@@ -77,7 +77,13 @@ jobs:
         run: bandit -c pyproject.toml -r src/
 
       - name: Dependency vulnerabilities (pip-audit)
-        run: pip-audit --strict
+        # --skip-editable excludes gamestate itself, which is installed with
+        # `pip install -e` and does not exist on PyPI to be audited.
+        # NOT --strict: strict treats "could not audit" as failure, so it
+        # fails on the very package we just told it to skip. The tradeoff is
+        # that an unauditable THIRD-PARTY dep would pass quietly; acceptable
+        # while every dependency is a mainstream PyPI package.
+        run: pip-audit --skip-editable
 
       - name: Secret scan (detect-secrets)
         run: detect-secrets scan --baseline .secrets.baseline
