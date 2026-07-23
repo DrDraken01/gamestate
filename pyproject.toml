@@ -64,7 +64,14 @@ ignore = []
 # on day one produces 400 errors and you disable it by day three.
 # ---------------------------------------------------------------------------
 [tool.mypy]
-python_version = "3.11"
+# NO python_version here, deliberately. Hardcoding it makes mypy analyse as
+# that version regardless of the interpreter it is actually running under --
+# so on a 3.12 venv with numpy 2.5+, whose stubs use PEP 695 `type`
+# statements, mypy reports:
+#     numpy/__init__.pyi: Type statement is only supported in Python 3.12+
+# Omitting it makes mypy infer the version from the running interpreter, so
+# the 3.11 CI job checks as 3.11 and the 3.12 job as 3.12 -- which is the
+# whole point of having a matrix.
 files = ["src", "tests"]
 warn_unused_configs = true
 warn_redundant_casts = true
