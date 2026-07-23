@@ -1,0 +1,59 @@
+# Fast checks only. Anything slower than ~2 seconds belongs in CI, not here --
+# if the commit hook is slow you will start using `git commit --no-verify`,
+# and a linter you routinely bypass is worse than no linter at all.
+#
+# Setup:  pre-commit install
+# Manual: pre-commit run --all-files
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=5000]   # stops you committing the raw data cache
+      - id: check-merge-conflict
+      - id: debug-statements    # catches a forgotten breakpoint()
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        additional_dependencies: [pandas-stubs, types-requests]
+
+  # Security: static analysis for common insecure patterns.
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        args: [-c, pyproject.toml]
+        additional_dependencies: ["bandit[toml]"]
+
+  # Secrets: blocks API keys before they enter history. Once a key is
+  # committed it is compromised forever -- rewriting history does not
+  # un-leak it, because clones and caches already have it.
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+
+  # Local hook: tests must pass before a commit lands.
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: python -m pytest
+        language: system
+        pass_filenames: false
+        types: [python]

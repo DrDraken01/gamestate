@@ -1,0 +1,99 @@
+name: CI
+
+# Runs on every push and PR. This is the slower half of the quality gate --
+# pre-commit catches fast things locally, CI catches everything else and,
+# crucially, catches what you skipped locally with `--no-verify`.
+
+# Least privilege: nothing here needs write access to the repo. A workflow
+# with default permissions can push tags and comments; if an action you depend
+# on is ever compromised, that token is what gets abused.
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly dependency audit. Vulnerabilities get disclosed on their own
+    # schedule, not yours -- a repo that only scans on push will sit exposed
+    # for however long you go without committing.
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: ruff check --output-format=github .
+
+      - name: Format check (ruff)
+        run: ruff format --check .
+
+      - name: Types (mypy)
+        run: mypy
+
+      - name: Tests
+        run: pytest -q
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # detect-secrets needs history to scan for previously committed keys.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Static security analysis (bandit)
+        run: bandit -c pyproject.toml -r src/
+
+      - name: Dependency vulnerabilities (pip-audit)
+        run: pip-audit --strict
+
+      - name: Secret scan (detect-secrets)
+        run: detect-secrets scan --baseline .secrets.baseline
+
+  # Semgrep is deliberately separate: it is the slowest check and we do not
+  # want it blocking the fast feedback loop on every push.
+  semgrep:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Installed via pip rather than the old returntocorp action, which is
+      # deprecated. Pinning the tool you run beats depending on a third-party
+      # action that can change under you.
+      - run: pip install semgrep
+      - run: semgrep --config p/python --error src/

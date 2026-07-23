@@ -1,0 +1,19 @@
+# Data caches -- regenerable, and large. Never commit these.
+data/
+*.parquet
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Notebooks: strip outputs before committing (see nbstripout)
+.ipynb_checkpoints/
+
+.env
+
+# NOTE: .secrets.baseline IS committed on purpose -- it is the allowlist of
+# reviewed findings. Ignoring it would make the hook fail for every teammate.
