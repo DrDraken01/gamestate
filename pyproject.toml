@@ -14,6 +14,11 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.6",
     "mypy>=1.10",
+    # Stubs are PINNED, not floated. Unpinned stubs resolve differently per
+    # Python version, so mypy passed on 3.11 and failed on 3.12 against
+    # identical source. Type checking has to be reproducible to be useful.
+    "pandas-stubs==2.2.3.241126",
+    "types-requests==2.32.0.20241016",
     "bandit>=1.7",
     "detect-secrets>=1.5",
     "pip-audit>=2.7",

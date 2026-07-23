@@ -114,19 +114,24 @@ def build_features(games: pd.DataFrame, window: int = 8, min_periods: int = 4) -
     which is not what missingness means here.
     """
     team_games = rolling_point_diff(to_team_games(games), window, min_periods)
-
-    ratings = team_games.set_index(["game_id", "team"])["prior_point_diff"]
+    ratings = team_games[["game_id", "team", "prior_point_diff"]]
 
     out = games[PASSTHROUGH].copy()
-    out["home_rating"] = pd.MultiIndex.from_arrays([games["game_id"], games["home_team"]]).map(
-        ratings
-    )
-    out["away_rating"] = pd.MultiIndex.from_arrays([games["game_id"], games["away_team"]]).map(
-        ratings
-    )
+    out["home_win"] = (games["result"] > 0).astype(int)
+
+    # Join each team's prior form back onto the wide game row. Two merges --
+    # one keyed on home_team, one on away_team -- rather than MultiIndex.map.
+    # Merges say plainly what the join key is, which matters when a bad join
+    # is the difference between a working model and a silently wrong one.
+    for side in ("home", "away"):
+        out = out.merge(
+            ratings.rename(columns={"team": f"{side}_team", "prior_point_diff": f"{side}_rating"}),
+            on=["game_id", f"{side}_team"],
+            how="left",
+            validate="one_to_one",
+        )
 
     # A single feature: the gap in recent form. Positive favors the home team.
     out["rating_diff"] = out["home_rating"] - out["away_rating"]
-    out["home_win"] = (games["result"] > 0).astype(int)
 
     return out.dropna(subset=["rating_diff"]).reset_index(drop=True)
