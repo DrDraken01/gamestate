@@ -118,6 +118,10 @@ def build_features(games: pd.DataFrame, window: int = 8, min_periods: int = 4) -
 
     out = games[PASSTHROUGH].copy()
     out["home_win"] = (games["result"] > 0).astype(int)
+    # The margin is the richer target: home_win is just margin > 0. Carrying
+    # both lets us check that a distribution-based win probability is at
+    # least as good as modelling the binary outcome directly.
+    out["margin"] = games["result"].astype(float)
 
     # Join each team's prior form back onto the wide game row. Two merges --
     # one keyed on home_team, one on away_team -- rather than MultiIndex.map.
