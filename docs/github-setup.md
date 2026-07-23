@@ -1,33 +1,26 @@
-# Getting this onto GitHub
+# Getting GameState onto GitHub
 
-The repo is already initialised with seven atomic commits. What's left is
+The repo is already initialised with seven atomic commits, authored as DrDraken01. What's left is
 creating the remote and pushing.
 
 ---
 
-## 1. Fix the commit authorship first
+## 1. Confirm authorship
 
-I committed under a placeholder identity. Set yours before pushing, or every
-commit will be attributed to `you@example.com` and won't link to your profile.
+Commits are already authored as `DrDraken01` using your GitHub noreply address,
+so they'll link to your profile without publishing a personal email.
 
 ```bash
-cd gamestate
-
-git config user.name  "Your Name"
-git config user.email "your-github-email@example.com"
+git log --format='%an <%ae>' -1
 ```
 
-Use the email attached to your GitHub account, or your GitHub noreply address
-(`12345678+DrDraken01@users.noreply.github.com`) if you'd rather not publish a
-real one. It's on GitHub under Settings → Emails.
-
-Then rewrite the existing commits to match:
+If you'd rather use a real email, set it and rewrite — but do this **before**
+the first push, since afterwards it rewrites published history:
 
 ```bash
+git config user.email "your-real-email@example.com"
 git rebase --root --exec 'git commit --amend --no-edit --reset-author'
 ```
-
-Do this *before* the first push. After, it rewrites published history.
 
 ---
 
