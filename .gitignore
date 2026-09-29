@@ -22,3 +22,5 @@ venv/
 
 # NOTE: .secrets.baseline IS committed on purpose -- it is the allowlist of
 # reviewed findings. Ignoring it would make the hook fail for every teammate.
+.DS_Store
+.DS_Store
