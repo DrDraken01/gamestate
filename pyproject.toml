@@ -2,7 +2,7 @@
 name = "gamestate"
 version = "0.1.0"
 description = "GameState — probabilistic NFL outcome estimation"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "pandas>=2.0",
     "pyarrow>=14.0",
@@ -13,12 +13,15 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",
-    "mypy>=1.10",
+    "mypy>=1.18",
     # Stubs are PINNED, not floated. Unpinned stubs resolve differently per
     # Python version, so mypy passed on 3.11 and failed on 3.12 against
     # identical source. Type checking has to be reproducible to be useful.
     "pandas-stubs==2.2.3.241126",
     "types-requests==2.32.0.20241016",
+    # numpy ships its own stubs, so its version IS a stub version. Pinned in
+    # [dev] for reproducible type checking; runtime numpy still floats. ADR-0006.
+    "numpy==2.5.1",
     "bandit>=1.7",
     "detect-secrets>=1.5",
     "pip-audit>=2.7",
@@ -72,6 +75,7 @@ ignore = []
 # Omitting it makes mypy infer the version from the running interpreter, so
 # the 3.11 CI job checks as 3.11 and the 3.12 job as 3.12 -- which is the
 # whole point of having a matrix.
+python_version = "3.12"
 files = ["src", "tests"]
 warn_unused_configs = true
 warn_redundant_casts = true
