@@ -63,5 +63,8 @@ def completed_games(games: pd.DataFrame) -> pd.DataFrame:
     if dropped:
         logger.info("dropped %d tie games", dropped)
 
-    decided["gameday"] = pd.to_datetime(decided["gameday"])
-    return decided.sort_values(["gameday", "game_id"]).reset_index(drop=True)
+    # nflverse calls this `gameday`; past this boundary the project uses
+    # "kickoff_at" (ADR-0007). the DB path already stores kickoff_at, so both
+    # ingestion paths now hand the feature layer the same canonical name.
+    decided["kickoff_at"] = pd.to_datetime(decided["gameday"])
+    return decided.sort_values(["kickoff_at", "game_id"]).reset_index(drop=True)
