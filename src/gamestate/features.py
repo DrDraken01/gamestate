@@ -26,7 +26,7 @@ import pandas as pd
 
 # Columns we carry through untouched so downstream code can slice results
 # (by season, by roof type, etc.) without re-joining the raw table.
-PASSTHROUGH = ["game_id", "season", "week", "gameday", "home_team", "away_team", "spread_line"]
+PASSTHROUGH = ["game_id", "season", "week", "kickoff_at", "home_team", "away_team"]
 
 
 def to_team_games(games: pd.DataFrame) -> pd.DataFrame:
@@ -43,7 +43,7 @@ def to_team_games(games: pd.DataFrame) -> pd.DataFrame:
         {
             "game_id": games["game_id"],
             "season": games["season"],
-            "gameday": games["gameday"],
+            "kickoff_at": games["kickoff_at"],
             "team": games["home_team"],
             "points_for": games["home_score"],
             "points_against": games["away_score"],
@@ -53,7 +53,7 @@ def to_team_games(games: pd.DataFrame) -> pd.DataFrame:
         {
             "game_id": games["game_id"],
             "season": games["season"],
-            "gameday": games["gameday"],
+            "kickoff_at": games["kickoff_at"],
             "team": games["away_team"],
             "points_for": games["away_score"],
             "points_against": games["home_score"],
@@ -62,7 +62,7 @@ def to_team_games(games: pd.DataFrame) -> pd.DataFrame:
 
     team_games = pd.concat([home, away], ignore_index=True)
     team_games["point_diff"] = team_games["points_for"] - team_games["points_against"]
-    return team_games.sort_values(["team", "gameday", "game_id"]).reset_index(drop=True)
+    return team_games.sort_values(["team", "kickoff_at", "game_id"]).reset_index(drop=True)
 
 
 def rolling_point_diff(

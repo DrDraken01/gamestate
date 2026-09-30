@@ -35,14 +35,14 @@ def toy_games() -> pd.DataFrame:
             "game_id",
             "season",
             "week",
-            "gameday",
+            "kickoff_at",
             "home_team",
             "away_team",
             "home_score",
             "away_score",
         ],
     )
-    frame["gameday"] = pd.to_datetime(frame["gameday"])
+    frame["kickoff_at"] = pd.to_datetime(frame["kickoff_at"])
     frame["result"] = frame["home_score"] - frame["away_score"]
     frame["spread_line"] = 7.0
     return frame
@@ -78,7 +78,7 @@ def test_first_game_has_no_rating(toy_games: pd.DataFrame) -> None:
     # the first NON-NULL value in each group, not the first row -- so it would
     # skip right past the NaN we are trying to assert on and the test would
     # fail against correct code. drop_duplicates actually takes the first row.
-    first_rows = team_games.sort_values("gameday").drop_duplicates("team", keep="first")
+    first_rows = team_games.sort_values("kickoff_at").drop_duplicates("team", keep="first")
     assert first_rows["prior_point_diff"].isna().all()
 
 
@@ -94,7 +94,7 @@ def test_future_data_cannot_change_past_features(toy_games: pd.DataFrame) -> Non
 
     extra = toy_games.iloc[[-1]].copy()
     extra["game_id"] = "g7"
-    extra["gameday"] = pd.Timestamp("2020-10-13")
+    extra["kickoff_at"] = pd.Timestamp("2020-10-13")
     extra["home_score"] = 99
     extended = build_features(
         pd.concat([toy_games, extra], ignore_index=True), window=8, min_periods=1
