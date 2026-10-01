@@ -157,5 +157,64 @@ def write_predictions(
     ]
     with conn.cursor() as cur:
         cur.executemany(INSERT_PREDICTION, rows)
-    conn.commit()
+    # NO commit here. The run row and all prediction rows are ONE unit of work --
+    # a week's batch plus its model_run record. The caller wraps both writes in a
+    # single transaction (write_prediction_batch) so it is all-or-nothing: a
+    # failure anywhere leaves zero rows and no orphan run, never a half-written
+    # batch that looks official. The transaction boundary belongs to the unit of
+    # work, not the individual write.
     return len(rows)
+
+
+def write_prediction_batch(
+    conn: Connection,
+    *,
+    games: pd.DataFrame,
+    producer: PmfProducer,
+    mu: np.ndarray,
+    sigma: float,
+    git_sha: str,
+    model_version: str,
+    feature_set: list[str],
+    trained_through: pd.Timestamp,
+    half_life: float | None,
+    notes: str | None = None,
+) -> tuple[int, int]:
+    """Write a run and all its predictions as ONE atomic transaction.
+
+    This is the unit of work: a week's prediction batch plus the model_run that
+    produced it. Either the run row and every prediction row commit together, or
+    nothing does. The guarantee, in the spec's terms:
+
+        games 1-9 succeed, game 10 crashes  ->  ZERO rows, no orphan run.
+
+    A half-written batch that an application might treat as official is the one
+    outcome this makes impossible. "Accuracy over availability": a missing
+    prediction is a signal; a silently partial one is a lie that looks official.
+
+    PMFs are produced and validated BEFORE the transaction opens, so a bad
+    distribution fails fast without ever touching the database. The transaction
+    then covers only the two writes, which commit or roll back as a unit.
+
+    Returns (run_id, n_predictions).
+    """
+    # Produce + validate first. If this throws, no transaction was opened and the
+    # database is untouched -- the cleanest possible failure.
+    pmfs = producer(games)
+    _validate_pmfs(pmfs, len(games))
+
+    with conn.transaction():
+        run_id = write_run(
+            conn,
+            git_sha=git_sha,
+            model_version=model_version,
+            feature_set=feature_set,
+            trained_through=trained_through,
+            half_life=half_life,
+            notes=notes,
+        )
+        # Pass the already-validated pmfs through a trivial producer so we do not
+        # recompute them inside the transaction.
+        n = write_predictions(conn, run_id, games, lambda _g: pmfs, mu, sigma)
+    # Exiting the `with` block commits. Any exception inside rolls BOTH writes back.
+    return run_id, n

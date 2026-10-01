@@ -29,7 +29,7 @@ import sys
 import pandas as pd
 import psycopg
 
-from gamestate.db.predict_writer import normal_producer, write_predictions, write_run
+from gamestate.db.predict_writer import normal_producer, write_prediction_batch
 from gamestate.db.read import read_completed_games, read_upcoming_games
 from gamestate.distribution import fit_margin_model, predict_distributions
 from gamestate.features import build_features
@@ -107,8 +107,12 @@ def main() -> int:
         normal, _empirical = predict_distributions(model, predict_rows, FEATURES, residuals, sigma)
         logger.info("fitted sigma = %.2f", sigma)
 
-        run_id = write_run(
+        run_id, n = write_prediction_batch(
             conn,
+            games=predict_rows,
+            producer=normal_producer(normal),
+            mu=normal.mu,
+            sigma=sigma,
             git_sha=current_git_sha(),
             model_version=MODEL_VERSION,
             feature_set=FEATURES,
@@ -116,8 +120,7 @@ def main() -> int:
             half_life=HALF_LIFE,
             notes=f"season={args.season} week={args.week}",
         )
-        n = write_predictions(conn, run_id, predict_rows, normal_producer(normal), normal.mu, sigma)
-        logger.info("run %d: wrote %d predictions", run_id, n)
+        logger.info("run %d: wrote %d predictions (atomic batch)", run_id, n)
 
     return 0
 
